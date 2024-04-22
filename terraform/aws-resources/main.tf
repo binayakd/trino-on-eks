@@ -145,43 +145,62 @@ resource "local_sensitive_file" "kubeconfig" {
 #################
 
 
-##################
-# Kube Resources #
-##################
+####################
+# Metastore RDS DB #
+####################
 
-# data "aws_eks_cluster_auth" "trino_eks" {
-#   name = local.name
-# }
+resource "aws_db_subnet_group" "trino_on_eks" {
+  name       = local.name
+  subnet_ids = module.vpc.public_subnets
 
-# provider "kubernetes" {
-#   host                   = module.eks[0].cluster_endpoint
-#   cluster_ca_certificate = base64decode(module.eks[0].cluster_certificate_authority_data)
-#   token                  = data.aws_eks_cluster_auth.trino_eks.token
-# }
+  tags = local.tags
+}
 
-# resource "kubernetes_service_account" "trino_s3_access_sa" {
-#   metadata {
-#     namespace = "default"
-#     name      = local.kube_sa_name
+resource "aws_security_group" "trino_on_eks_rds" {
+  name   = "trino_on_eks_rds"
+  vpc_id = module.vpc.vpc_id
 
-#     annotations = {
-#       "eks.amazonaws.com/role-arn" = module.n [0].iam_role_arn
-#     }
-#   }
-#   automount_service_account_token = true
-# }
+  ingress {
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = concat(["10.0.0.0/24"], var.cluster_endpoint_public_access_cidrs)
+  }
 
-# resource "kubernetes_secret" "trino_s3_access_sa_secret" {
-#   metadata {
-#     annotations = {
-#       "kubernetes.io/service-account.name" = kubernetes_service_account.trino_s3_access_sa.metadata.0.name
-#     }
-#     namespace     = "default"
-#     generate_name = "${kubernetes_service_account.trino_s3_access_sa.metadata.0.name}-token-"
-#   }
+  egress {
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
-#   type = "kubernetes.io/service-account-token"
-#   wait_for_service_account_token = true
-# }
+  tags = local.tags
+}
 
-##################
+resource "aws_db_parameter_group" "trino_on_eks_rds" {
+  name   = local.name
+  family = "postgres16"
+
+  parameter {
+    name  = "log_connections"
+    value = "0"
+  }
+}
+
+resource "aws_db_instance" "trino_on_eks_rds" {
+  count = var.enable_rds ? 1 : 0
+
+  identifier             = local.name
+  instance_class         = "db.t4g.micro"
+  allocated_storage      = 10
+  engine                 = "postgres"
+  engine_version         = "16.2"
+  db_name                = "postgres"
+  username               = var.db_user
+  password               = var.db_password
+  db_subnet_group_name   = aws_db_subnet_group.trino_on_eks.name
+  vpc_security_group_ids = [aws_security_group.trino_on_eks_rds.id]
+  parameter_group_name   = aws_db_parameter_group.trino_on_eks_rds.name
+  publicly_accessible    = true
+  skip_final_snapshot    = true
+}
