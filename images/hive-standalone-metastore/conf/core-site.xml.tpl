@@ -1,7 +1,7 @@
 <configuration>
   <property>
     <name>fs.defaultFS</name>
-    <value>${HIVE_WAREHOUSE_LOCATION}</value>
+    <value>${HIVE_WAREHOUSE_DIR}</value>
   </property>
   <property>
     <name>fs.s3a.impl</name>
