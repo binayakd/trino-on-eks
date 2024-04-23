@@ -11,6 +11,7 @@ locals {
   vpc_cidr = "10.0.0.0/24"
   azs      = slice(data.aws_availability_zones.available.names, 0, 3)
 
+  kube_namespace = "trino"
   kube_sa_name = "s3-access"
 
   tags = {
@@ -127,7 +128,7 @@ module "trino_s3_access_irsa" {
   role_name                     = "trino_s3_access_role"
   provider_url                  = module.eks[0].oidc_provider
   role_policy_arns              = [aws_iam_policy.trino_s3_access_policy.arn]
-  oidc_fully_qualified_subjects = ["system:serviceaccount:default:${local.kube_sa_name}"]
+  oidc_fully_qualified_subjects = ["system:serviceaccount:${local.kube_namespace}:${local.kube_sa_name}"]
 }
 
 resource "local_sensitive_file" "kubeconfig" {
@@ -149,6 +150,30 @@ resource "local_sensitive_file" "kubeconfig" {
 # Metastore RDS DB #
 ####################
 
+resource "random_password" "rds_password"{
+  length           = 16
+  special          = true
+  override_special = "_!%^"
+}
+
+resource "aws_secretsmanager_secret" "rds_password" {
+  name = "trino-on-eks-rds-password"
+}
+
+resource "aws_secretsmanager_secret_version" "rds_password" {
+  secret_id = aws_secretsmanager_secret.rds_password.id
+  secret_string = random_password.rds_password.result
+}
+
+# data "aws_secretsmanager_secret" "rds_password" {
+#   name = "trino-on-eks-rds-password"
+
+# }
+
+# data "aws_secretsmanager_secret_version" "rds_password" {
+#   secret_id = data.aws_secretsmanager_secret.rds_password.id
+# }
+
 resource "aws_db_subnet_group" "trino_on_eks" {
   name       = local.name
   subnet_ids = module.vpc.public_subnets
@@ -157,7 +182,7 @@ resource "aws_db_subnet_group" "trino_on_eks" {
 }
 
 resource "aws_security_group" "trino_on_eks_rds" {
-  name   = "trino_on_eks_rds"
+  name   = "trino-on-eks-rds"
   vpc_id = module.vpc.vpc_id
 
   ingress {
@@ -195,9 +220,9 @@ resource "aws_db_instance" "trino_on_eks_rds" {
   allocated_storage      = 10
   engine                 = "postgres"
   engine_version         = "16.2"
-  db_name                = "postgres"
-  username               = var.db_user
-  password               = var.db_password
+  db_name                = "trino_on_eks"
+  username               = "trino_on_eks"
+  password               = random_password.rds_password.result
   db_subnet_group_name   = aws_db_subnet_group.trino_on_eks.name
   vpc_security_group_ids = [aws_security_group.trino_on_eks_rds.id]
   parameter_group_name   = aws_db_parameter_group.trino_on_eks_rds.name
