@@ -37,7 +37,7 @@ RUN curl https://dlcdn.apache.org/hadoop/common/hadoop-$HADOOP_VERSION/hadoop-$H
     && rm -r ${HADOOP_HOME}/share/doc
 
 # Download the standalone hive metastore 
-RUN curl https://repo1.maven.org/maven2/org/apache/hive/hive-standalone-metastore-server/${METASTORE_VERSION}/hive-standalone-metastore-server-${HSM_VERSION}-bin.tar.gz \
+RUN curl https://repo1.maven.org/maven2/org/apache/hive/hive-standalone-metastore-server/${METASTORE_VERSION}/hive-standalone-metastore-server-${METASTORE_VERSION}-bin.tar.gz \
     | tar xz -C /opt/ \
     && ln -s /opt/apache-hive-metastore-${METASTORE_VERSION}-bin ${METASTORE_HOME} \
     # fix for schemaTool script
