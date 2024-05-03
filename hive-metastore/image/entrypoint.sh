@@ -19,11 +19,11 @@ initSchema () {
   fi
 }
 
-log "INFO" "Templating core-site.xml"
-envsubst < conf/tpl/core-site.xml.tpl > conf/core-site.xml
+# log "INFO" "Templating core-site.xml"
+# envsubst < conf/tpl/core-site.xml.tpl > conf/core-site.xml
 
-log "INFO" "Templating metastore-site.xml"
-envsubst < conf/tpl/metastore-site.xml.tpl > conf/metastore-site.xml
+# log "INFO" "Templating metastore-site.xml"
+# envsubst < conf/tpl/metastore-site.xml.tpl > conf/metastore-site.xml
 
 
 if initSchema 

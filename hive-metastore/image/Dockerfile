@@ -5,13 +5,13 @@ ARG RUN_AS_USER=1000
 ARG RUN_AS_GROUP=1000
 
 # Versions
-ARG HSM_VERSION=4.0.0
+ARG METASTORE_VERSION=4.0.0
 ARG HADOOP_VERSION=3.4.0
 ARG POSTGRES_DRIVER_VERSION=42.7.3
 
 # update and install java and dependencies
 RUN microdnf update -y \
-  && microdnf --nodocs install java-17-openjdk-headless tar shadow-utils gzip gettext -y \
+  && microdnf --nodocs install shadow-utils java-17-openjdk-headless tar gzip gettext -y \
   && microdnf clean all -y
 
 # set up non root user
@@ -37,9 +37,9 @@ RUN curl https://dlcdn.apache.org/hadoop/common/hadoop-$HADOOP_VERSION/hadoop-$H
     && rm -r ${HADOOP_HOME}/share/doc
 
 # Download the standalone hive metastore 
-RUN curl https://repo1.maven.org/maven2/org/apache/hive/hive-standalone-metastore-server/${HSM_VERSION}/hive-standalone-metastore-server-${HSM_VERSION}-bin.tar.gz \
+RUN curl https://repo1.maven.org/maven2/org/apache/hive/hive-standalone-metastore-server/${METASTORE_VERSION}/hive-standalone-metastore-server-${HSM_VERSION}-bin.tar.gz \
     | tar xz -C /opt/ \
-    && ln -s /opt/apache-hive-metastore-${HSM_VERSION}-bin ${METASTORE_HOME} \
+    && ln -s /opt/apache-hive-metastore-${METASTORE_VERSION}-bin ${METASTORE_HOME} \
     # fix for schemaTool script
     && sed -i -e 's/org.apache.hadoop.hive.metastore.tools.MetastoreSchemaTool/org.apache.hadoop.hive.metastore.tools.schematool.MetastoreSchemaTool/g' ${METASTORE_HOME}/bin/ext/schemaTool.sh
 
@@ -48,9 +48,6 @@ WORKDIR ${METASTORE_HOME}
 RUN curl https://repo1.maven.org/maven2/org/postgresql/postgresql/${POSTGRES_DRIVER_VERSION}/postgresql-${POSTGRES_DRIVER_VERSION}.jar \
     -o lib/postgresql-${POSTGRES_DRIVER_VERSION}.jar
 
-COPY --chown=hsm:hsm conf/metastore-log4j2.properties conf/metastore-log4j2.properties
-COPY --chown=hsm:hsm conf/core-site.xml.tpl conf/tpl/core-site.xml.tpl
-COPY --chown=hsm:hsm conf/metastore-site.xml.tpl conf/tpl/metastore-site.xml.tpl
 COPY --chown=hsm:hsm --chmod=775 entrypoint.sh bin/entrypoint.sh
 
 CMD ["bash", "-c", "bin/entrypoint.sh"]

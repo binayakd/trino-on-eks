@@ -10,11 +10,11 @@ locals {
   }
 }
 
-data "aws_eks_cluster" "default" {
+data "aws_eks_cluster" "trino_on_eks" {
   name = local.name
 }
 
-data "aws_eks_cluster_auth" "default" {
+data "aws_eks_cluster_auth" "trino_on_eks" {
   name = local.name
 }
 
@@ -37,14 +37,14 @@ data "aws_secretsmanager_secret_version" "rds_password" {
 
 
 provider "kubernetes" {
-  host                   = data.aws_eks_cluster.default.endpoint
+  host                   = data.aws_eks_cluster.trino_on_eks.endpoint
   cluster_ca_certificate = base64decode(data.aws_eks_cluster.default.certificate_authority[0].data)
   token                  = data.aws_eks_cluster_auth.default.token
 }
 
 provider "helm" {
   kubernetes {
-    host                   = data.aws_eks_cluster.default.endpoint
+    host                   = data.aws_eks_cluster.trino_on_eks.endpoint
     cluster_ca_certificate = base64decode(data.aws_eks_cluster.default.certificate_authority[0].data)
     token                  = data.aws_eks_cluster_auth.default.token
   }
@@ -111,6 +111,7 @@ resource "kubernetes_manifest" "deployment_hive_standalone_metastore" {
         "app" = "hsm"
       }
       "name" = "hive-standalone-metastore"
+      "namespace" = local.kube_namespace
     }
     "spec" = {
       "replicas" = 1
@@ -167,4 +168,14 @@ resource "kubernetes_manifest" "deployment_hive_standalone_metastore" {
       }
     }
   }
+}
+
+
+resource "helm_release" "trino" {
+  name = "trino"
+  namespace = local.kube_namespace
+
+  repository = "https://trinodb.github.io/charts/"
+  chart      = "trino/trino"
+
 }
