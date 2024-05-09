@@ -27,7 +27,7 @@ data "aws_db_instance" "trino_on_eks_rds" {
 }
 
 data "aws_secretsmanager_secret" "rds_password" {
-  name = "test-db-password"
+  name = "trino-on-eks-rds-password"
 
 }
 
@@ -68,106 +68,45 @@ resource "kubernetes_service_account" "trino_s3_access_sa" {
   }
 }
 
-# resource "kubernetes_manifest" "test_pod" {
-#   manifest = yamldecode(file("manifests/test-pod.yaml"))
+
+resource "helm_release" "metastore" {
+  name = "metastore"
+  namespace = local.kube_namespace
+  chart = "../../metastore/helm-chart"
+
+  set {
+    name = image
+    value = "ghcr.io/binayakd/hive-standalone-metastore:4.0.0-hadoop-3.4.0"
+  }
+
+  set {
+    name = dbUrl
+    value = "jdbc:postgresql://${data.aws_db_instance.endpoint}/${data.aws_db_instance.db_name}"
+  }
+  set {
+    name = dbUser
+    value = data.aws_db_instance.master_username
+  }
+
+  set{
+    name = dbPassword
+    value = data.aws_secretsmanager_secret_version.rds_password.secret_string 
+  }
+  set {
+    name = dbDriver
+    value = "org.postgresql.Driver"
+  }
+
+  set {
+    name = s3Bucket
+    value = "s3://trino-on-eks"
+  }
+
+  set {
+    name = serviceAccountName
+    value = local.kube_sa_name
+  }
   
-# }
-
-resource "kubernetes_manifest" "pod_trino_test_pod" {
-  manifest = {
-    "apiVersion" = "v1"
-    "kind" = "Pod"
-    "metadata" = {
-      "name" = "test-pod"
-      "namespace" = local.kube_namespace
-    }
-    "spec" = {
-      "containers" = [
-        {
-          "args" = [
-            "while true; do sleep 30; done;",
-          ]
-          "command" = [
-            "/bin/bash",
-            "-c",
-            "--",
-          ]
-          "image" = "amazon/aws-cli:latest"
-          "name" = "test"
-        },
-      ]
-      "serviceAccountName" = "s3-access"
-    }
-  }
-}
-
-
-resource "kubernetes_manifest" "deployment_hive_standalone_metastore" {
-  manifest = {
-    "apiVersion" = "apps/v1"
-    "kind" = "Deployment"
-    "metadata" = {
-      "labels" = {
-        "app" = "hsm"
-      }
-      "name" = "hive-standalone-metastore"
-      "namespace" = local.kube_namespace
-    }
-    "spec" = {
-      "replicas" = 1
-      "selector" = {
-        "matchLabels" = {
-          "app" = "hsm"
-        }
-      }
-      "template" = {
-        "metadata" = {
-          "labels" = {
-            "app" = "hsm"
-          }
-        }
-        "spec" = {
-          "containers" = [
-            {
-              "env" = [
-                {
-                  "name" = "HIVE_METASTORE_URIS"
-                  "value" = "thrift://0.0.0.0:9083"
-                },
-                {
-                  "name" = "HIVE_DB_JDBC_URL"
-                  "value" = "jdbc:postgresql://${data.aws_db_instance.endpoint}/${data.aws_db_instance.db_name}"
-                },
-                {
-                  "name" = "HIVE_DB_DRIVER"
-                  "value" = "org.postgresql.Driver"
-                },
-                {
-                  "name" = "HIVE_DB_USER"
-                  "value" = "postgres"
-                },
-                {
-                  "name" = "HIVE_DB_PASS"
-                  "value" = data.aws_secretsmanager_secret_version.rds_password.secret_string 
-                },
-                {
-                  "name" = "HIVE_WAREHOUSE_DIR"
-                  "value" = ""
-                },
-              ]
-              "image" = "ghcr.io/binayakd/hive-standalone-metastore:4.0.0-hadoop-3.4.0"
-              "name" = "hsm"
-              "ports" = [
-                {
-                  "containerPort" = 9083
-                },
-              ]
-            }
-          ]
-        }
-      }
-    }
-  }
 }
 
 

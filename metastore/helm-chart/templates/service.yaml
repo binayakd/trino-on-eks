@@ -1,15 +1,15 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "metastore.fullname" . }}
+  name: metastore
   labels:
-    {{- include "metastore.labels" . | nindent 4 }}
+    app: trino-on-eks
 spec:
-  type: {{ .Values.service.type }}
+  type: ClusterIP
   ports:
-    - port: {{ .Values.service.port }}
-      targetPort: http
+    - name: thrift
+      port: 9083
+      targetPort: 9083
       protocol: TCP
-      name: http
   selector:
-    {{- include "metastore.selectorLabels" . | nindent 4 }}
+    app: metastore

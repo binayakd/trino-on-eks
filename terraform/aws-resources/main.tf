@@ -165,14 +165,6 @@ resource "aws_secretsmanager_secret_version" "rds_password" {
   secret_string = random_password.rds_password.result
 }
 
-# data "aws_secretsmanager_secret" "rds_password" {
-#   name = "trino-on-eks-rds-password"
-
-# }
-
-# data "aws_secretsmanager_secret_version" "rds_password" {
-#   secret_id = data.aws_secretsmanager_secret.rds_password.id
-# }
 
 resource "aws_db_subnet_group" "trino_on_eks" {
   name       = local.name

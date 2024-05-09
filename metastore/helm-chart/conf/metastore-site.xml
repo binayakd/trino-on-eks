@@ -1,27 +1,27 @@
 <configuration>
     <property>
         <name>hive.metastore.uris</name>
-        <value>${HIVE_METASTORE_URIS}</value>
+        <value>thrift://0.0.0.0:9083</value>
     </property>
     <property>
         <name>javax.jdo.option.ConnectionURL</name>
-        <value>${HIVE_DB_JDBC_URL}</value>
+        <value>{{ .Values.dbUrl }}</value>
     </property>
     <property>
         <name>javax.jdo.option.ConnectionDriverName</name>
-        <value>${HIVE_DB_DRIVER}</value>
+        <value>{{ .Values.dbDriver }}</value>
     </property>
     <property>
         <name>javax.jdo.option.ConnectionUserName</name>
-        <value>${HIVE_DB_USER}</value>
+        <value>{{ .Values.dbUser }}</value>
     </property>
     <property>
         <name> javax.jdo.option.ConnectionPassword</name>
-        <value>${HIVE_DB_PASS}</value>
+        <value>{{ .Values.dbPassword }}</value>
     </property>
     <property>
         <name>hive.metastore.warehouse.dir</name>
-        <value>${HIVE_WAREHOUSE_DIR}</value>
+        <value>{{ .Values.s3Bucket }}</value>
     </property>
     <property>
         <name>metastore.expression.proxy</name>
