@@ -14,6 +14,7 @@ spec:
       labels:
         app: metastore
     spec:
+      enableServiceLinks: false
       serviceAccountName: {{ .Values.serviceAccountName }}
       containers:
         - name: hsm

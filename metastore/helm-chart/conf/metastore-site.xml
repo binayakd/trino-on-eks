@@ -1,7 +1,11 @@
 <configuration>
     <property>
-        <name>hive.metastore.uris</name>
+        <name>metastore.thrift.uris</name>
         <value>thrift://0.0.0.0:9083</value>
+    </property>
+    <property>
+        <name>metastore.thrift.port</name>
+        <value>9083</value>
     </property>
     <property>
         <name>javax.jdo.option.ConnectionURL</name>
