@@ -17,7 +17,6 @@
     </property>
     <property>
         <name>fs.s3a.aws.credentials.provider</name>
-        <!-- <value>com.amazonaws.auth.DefaultAWSCredentialsProviderChain</value> -->
         <value>software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider</value>
     </property>
 </configuration>

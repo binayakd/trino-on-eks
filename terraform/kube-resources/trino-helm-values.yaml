@@ -1,0 +1,8 @@
+server:
+  workers: 1
+additionalCatalogs:
+  s3_hive: |-
+    connector.name=hive
+    hive.metastore.uri=thrift://metastore:9083
+    fs.native-s3.enabled=true
+    s3.region=ap-southeast-1

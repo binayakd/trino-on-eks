@@ -1,9 +1,5 @@
-provider "aws" {
-  region = local.region
-}
 
 data "aws_availability_zones" "available" {}
-
 locals {
   name   = "trino-on-eks"
   region = "ap-southeast-1"
@@ -19,12 +15,49 @@ locals {
   }
 }
 
+provider "aws" {
+  region = local.region
+}
+
+
+#################
+# S3 Resources  #
+#################
+
 resource "aws_s3_bucket" "trino_on_eks" {
   bucket = local.name
 
   tags = local.tags
 }
 
+data "aws_iam_policy_document" "trino_s3_access" {
+  statement {
+    actions = [
+      "s3:ListBucket"
+    ]
+    resources = [aws_s3_bucket.trino_on_eks.arn]
+  }
+
+  statement {
+    actions = [
+      "s3:PutObject",
+      "s3:GetObject",
+      "s3:DeleteObject"
+    ]
+    resources = ["${aws_s3_bucket.trino_on_eks.arn}/*"]
+  }
+}
+
+resource "aws_iam_policy" "trino_s3_access_policy" {
+  name   = "trino_s3_access_policy"
+  path   = "/"
+  policy = data.aws_iam_policy_document.trino_s3_access.json
+}
+
+
+#######
+# VPC #
+#######
 
 module "vpc" {
   source = "terraform-aws-modules/vpc/aws"
@@ -41,34 +74,6 @@ module "vpc" {
   tags = local.tags
 }
 
-
-data "aws_iam_policy_document" "trino_s3_access" {
-  statement {
-    actions = [
-      "s3:ListBucket"
-    ]
-
-    resources = [aws_s3_bucket.trino_on_eks.arn]
-
-  }
-
-  statement {
-    actions = [
-      "s3:PutObject",
-      "s3:GetObject",
-      "s3:DeleteObject"
-    ]
-
-    resources = ["${aws_s3_bucket.trino_on_eks.arn}/*"]
-
-  }
-}
-
-resource "aws_iam_policy" "trino_s3_access_policy" {
-  name   = "trino_s3_access_policy"
-  path   = "/"
-  policy = data.aws_iam_policy_document.trino_s3_access.json
-}
 
 
 #################
@@ -93,6 +98,9 @@ module "eks" {
       most_recent = true
     }
     kube-proxy = {
+      most_recent = true
+    }
+    vpc-cni = {
       most_recent = true
     }
   }
@@ -181,7 +189,7 @@ resource "aws_security_group" "trino_on_eks_rds" {
     from_port   = 5432
     to_port     = 5432
     protocol    = "tcp"
-    cidr_blocks = concat(["10.0.0.0/24"], var.cluster_endpoint_public_access_cidrs)
+    cidr_blocks = concat([local.vpc_cidr], var.cluster_endpoint_public_access_cidrs)
   }
 
   egress {

@@ -11,7 +11,7 @@ ARG POSTGRES_DRIVER_VERSION=42.7.3
 
 # update and install java and dependencies
 RUN microdnf update -y \
-  && microdnf --nodocs install shadow-utils java-17-openjdk-headless tar gzip gettext -y \
+  && microdnf --nodocs install shadow-utils java-17-openjdk-headless tar gzip -y \
   && microdnf clean all -y
 
 # set up non root user
@@ -43,12 +43,11 @@ RUN curl https://repo1.maven.org/maven2/org/apache/hive/hive-standalone-metastor
     # fix for schemaTool script
     && sed -i -e 's/org.apache.hadoop.hive.metastore.tools.MetastoreSchemaTool/org.apache.hadoop.hive.metastore.tools.schematool.MetastoreSchemaTool/g' ${METASTORE_HOME}/bin/ext/schemaTool.sh
 
-WORKDIR ${METASTORE_HOME}
 # download postgres jdbc driver jar
 RUN curl https://repo1.maven.org/maven2/org/postgresql/postgresql/${POSTGRES_DRIVER_VERSION}/postgresql-${POSTGRES_DRIVER_VERSION}.jar \
-    -o lib/postgresql-${POSTGRES_DRIVER_VERSION}.jar
+    -o ${METASTORE_HOME}/lib/postgresql-${POSTGRES_DRIVER_VERSION}.jar
 
+WORKDIR ${METASTORE_HOME}
 COPY --chown=hsm:hsm --chmod=775 entrypoint.sh bin/entrypoint.sh
-
 CMD ["bash", "-c", "bin/entrypoint.sh"]
 

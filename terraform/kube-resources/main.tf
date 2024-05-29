@@ -2,8 +2,6 @@ locals {
   name   = "trino-on-eks"
   region = "ap-southeast-1"
 
-  
-
   kube_namespace = "trino"
   kube_sa_name = "s3-access"
 
@@ -56,7 +54,6 @@ resource "kubernetes_namespace" "trino" {
   metadata {
     name = local.kube_namespace
   }
-  
 }
 
 resource "kubernetes_service_account" "trino_s3_access_sa" {
@@ -111,15 +108,23 @@ resource "helm_release" "metastore" {
     name = "serviceAccountName"
     value = local.kube_sa_name
   }
-  
 }
 
 
-# resource "helm_release" "trino" {
-#   name = "trino"
-#   namespace = local.kube_namespace
+resource "helm_release" "trino" {
+  name = "trino"
+  namespace = local.kube_namespace
 
-#   repository = "https://trinodb.github.io/charts/"
-#   chart      = "trino/trino"
+  repository = "https://trinodb.github.io/charts"
+  chart      = "trino"
 
-# }
+  values = [
+    "${file("trino-helm-values.yaml")}"
+  ]
+
+  set {
+    name = "serviceAccount.name"
+    value = local.kube_sa_name
+  }
+
+}

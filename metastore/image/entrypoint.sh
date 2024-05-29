@@ -8,7 +8,7 @@ function log () {
     echo $(date  '+%d-%m-%Y %H:%M:%S') [${level}]  ${message}
 }
 
-initSchema () {
+function initSchema () {
   log "INFO" "checking DB schemas"
   if ${METASTORE_HOME}/bin/schematool -info -dbType postgres
   then
@@ -19,12 +19,6 @@ initSchema () {
   fi
 }
 
-# log "INFO" "Templating core-site.xml"
-# envsubst < conf/tpl/core-site.xml.tpl > conf/core-site.xml
-
-# log "INFO" "Templating metastore-site.xml"
-# envsubst < conf/tpl/metastore-site.xml.tpl > conf/metastore-site.xml
-
 
 if initSchema 
 then 
@@ -32,6 +26,5 @@ then
   ${METASTORE_HOME}/bin/start-metastore
 else 
   log "ERROR" "error checking schema or running initSchema"
-  log "INFO" "trying to start metastore anyway"
-  ${METASTORE_HOME}/bin/start-metastore
+  exit 1
 fi

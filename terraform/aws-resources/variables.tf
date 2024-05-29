@@ -1,11 +1,13 @@
 variable "enable_eks" {
   type    = bool
   default = true
+  description = "Turn on or off the EKS resources"
 }
 
 variable "enable_rds" {
   type    = bool
   default = true
+  description = "Turn on or off the RDS resources"
 }
 
 variable "cluster_endpoint_public_access_cidrs" {
@@ -15,13 +17,5 @@ variable "cluster_endpoint_public_access_cidrs" {
 
 variable "kubeconfig_location" {
   type = string
+  description = "Location to save the Kubeconfig file to"
 }
-
-# variable "db_user" {
-#   type = string
-# }
-
-# variable "db_password" {
-#   type = string
-# }
-

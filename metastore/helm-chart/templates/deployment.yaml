@@ -17,7 +17,7 @@ spec:
       enableServiceLinks: false
       serviceAccountName: {{ .Values.serviceAccountName }}
       containers:
-        - name: hsm
+        - name: metastore
           image: {{ .Values.image }}
           ports:
           - containerPort: 9083
