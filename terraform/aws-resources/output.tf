@@ -19,7 +19,7 @@ output "trino_on_eks_rds_port" {
 
 output "trino_on_eks_rds_username" {
   description = "RDS instance root username"
-  value       = var.enable_rds ? aws_db_instance.trino_on_eks_rds[0].username: null
+  value       = var.enable_rds ? aws_db_instance.trino_on_eks_rds[0].username : null
 }
 
 output "trino_on_eks_rds_password" {

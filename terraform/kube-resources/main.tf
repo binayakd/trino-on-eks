@@ -1,21 +1,15 @@
 locals {
-  name   = "trino-on-eks"
-  region = "ap-southeast-1"
-
-  kube_namespace = "trino"
-  kube_sa_name = "s3-access"
-
   tags = {
-    role = "trino-on-eks"
+    role = var.name
   }
 }
 
 data "aws_eks_cluster" "trino_on_eks" {
-  name = local.name
+  name = var.name
 }
 
 data "aws_eks_cluster_auth" "trino_on_eks" {
-  name = local.name
+  name = var.name
 }
 
 data "aws_iam_role" "trino_s3_access_role" {
@@ -23,7 +17,7 @@ data "aws_iam_role" "trino_s3_access_role" {
 }
 
 data "aws_db_instance" "trino_on_eks_rds" {
-  db_instance_identifier = local.name
+  db_instance_identifier = var.name
 }
 
 data "aws_secretsmanager_secret" "rds_password" {
@@ -52,15 +46,15 @@ provider "helm" {
 
 resource "kubernetes_namespace" "trino" {
   metadata {
-    name = local.kube_namespace
+    name = var.kube_namespace_name
   }
 }
 
 resource "kubernetes_service_account" "trino_s3_access_sa" {
-  depends_on = [ kubernetes_namespace.trino ]
+  depends_on = [kubernetes_namespace.trino]
   metadata {
-    name = local.kube_sa_name
-    namespace = local.kube_namespace
+    name      = var.kube_sa_name
+    namespace = var.kube_namespace_name
 
     annotations = {
       "eks.amazonaws.com/role-arn" = data.aws_iam_role.trino_s3_access_role.arn
@@ -70,50 +64,50 @@ resource "kubernetes_service_account" "trino_s3_access_sa" {
 
 
 resource "helm_release" "metastore" {
-  depends_on = [ kubernetes_service_account.trino_s3_access_sa ]
+  depends_on = [kubernetes_service_account.trino_s3_access_sa]
 
-  name = "metastore"
-  namespace = local.kube_namespace
-  chart = "../../metastore/helm-chart"
+  name      = "metastore"
+  namespace = var.kube_namespace_name
+  chart     = "../../metastore/helm-chart"
 
   set {
-    name = "image"
+    name  = "image"
     value = "ghcr.io/binayakd/metastore:4.0.0-hadoop-3.4.0"
   }
 
   set {
-    name = "dbUrl"
+    name  = "dbUrl"
     value = "jdbc:postgresql://${data.aws_db_instance.trino_on_eks_rds.endpoint}/${data.aws_db_instance.trino_on_eks_rds.db_name}"
   }
   set {
-    name = "dbUser"
+    name  = "dbUser"
     value = data.aws_db_instance.trino_on_eks_rds.master_username
   }
 
-  set{
-    name = "dbPassword"
-    value = data.aws_secretsmanager_secret_version.rds_password.secret_string 
+  set {
+    name  = "dbPassword"
+    value = data.aws_secretsmanager_secret_version.rds_password.secret_string
   }
   set {
-    name = "dbDriver"
+    name  = "dbDriver"
     value = "org.postgresql.Driver"
   }
 
   set {
-    name = "s3Bucket"
+    name  = "s3Bucket"
     value = "s3://trino-on-eks"
   }
 
   set {
-    name = "serviceAccountName"
-    value = local.kube_sa_name
+    name  = "serviceAccountName"
+    value = var.kube_sa_name
   }
 }
 
 
 resource "helm_release" "trino" {
-  name = "trino"
-  namespace = local.kube_namespace
+  name      = "trino"
+  namespace = var.kube_namespace_name
 
   repository = "https://trinodb.github.io/charts"
   chart      = "trino"
@@ -123,8 +117,7 @@ resource "helm_release" "trino" {
   ]
 
   set {
-    name = "serviceAccount.name"
-    value = local.kube_sa_name
+    name  = "serviceAccount.name"
+    value = var.kube_sa_name
   }
-
 }

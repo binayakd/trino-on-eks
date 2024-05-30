@@ -1,22 +1,15 @@
 
 data "aws_availability_zones" "available" {}
 locals {
-  name   = "trino-on-eks"
-  region = "ap-southeast-1"
-
-  vpc_cidr = "10.0.0.0/24"
-  azs      = slice(data.aws_availability_zones.available.names, 0, 3)
-
-  kube_namespace = "trino"
-  kube_sa_name = "s3-access"
+  azs = slice(data.aws_availability_zones.available.names, 0, 3)
 
   tags = {
-    role = "trino-on-eks"
+    role = var.name
   }
 }
 
 provider "aws" {
-  region = local.region
+  region = var.region
 }
 
 
@@ -25,9 +18,8 @@ provider "aws" {
 #################
 
 resource "aws_s3_bucket" "trino_on_eks" {
-  bucket = local.name
-
-  tags = local.tags
+  bucket = var.name
+  tags   = local.tags
 }
 
 data "aws_iam_policy_document" "trino_s3_access" {
@@ -62,11 +54,11 @@ resource "aws_iam_policy" "trino_s3_access_policy" {
 module "vpc" {
   source = "terraform-aws-modules/vpc/aws"
 
-  name = local.name
-  cidr = local.vpc_cidr
+  name = var.name
+  cidr = var.vpc_cidr
 
   azs                     = local.azs
-  public_subnets          = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 4, k)]
+  public_subnets          = [for k, v in local.azs : cidrsubnet(var.vpc_cidr, 4, k)]
   enable_dns_support      = true
   enable_dns_hostnames    = true
   map_public_ip_on_launch = true
@@ -86,7 +78,7 @@ module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 20.0"
 
-  cluster_name    = local.name
+  cluster_name    = var.name
   cluster_version = "1.29"
 
   cluster_endpoint_private_access      = true
@@ -136,7 +128,7 @@ module "trino_s3_access_irsa" {
   role_name                     = "trino_s3_access_role"
   provider_url                  = module.eks[0].oidc_provider
   role_policy_arns              = [aws_iam_policy.trino_s3_access_policy.arn]
-  oidc_fully_qualified_subjects = ["system:serviceaccount:${local.kube_namespace}:${local.kube_sa_name}"]
+  oidc_fully_qualified_subjects = ["system:serviceaccount:${var.kube_namespace_name}:${var.kube_sa_name}"]
 }
 
 resource "local_sensitive_file" "kubeconfig" {
@@ -146,7 +138,7 @@ resource "local_sensitive_file" "kubeconfig" {
     cluster_name = module.eks[0].cluster_name,
     clusterca    = module.eks[0].cluster_certificate_authority_data,
     endpoint     = module.eks[0].cluster_endpoint,
-    region       = local.region
+    region       = var.region
   })
   filename = var.kubeconfig_location
 }
@@ -158,7 +150,7 @@ resource "local_sensitive_file" "kubeconfig" {
 # Metastore RDS DB #
 ####################
 
-resource "random_password" "rds_password"{
+resource "random_password" "rds_password" {
   length           = 16
   special          = true
   override_special = "_!%^"
@@ -169,13 +161,13 @@ resource "aws_secretsmanager_secret" "rds_password" {
 }
 
 resource "aws_secretsmanager_secret_version" "rds_password" {
-  secret_id = aws_secretsmanager_secret.rds_password.id
+  secret_id     = aws_secretsmanager_secret.rds_password.id
   secret_string = random_password.rds_password.result
 }
 
 
 resource "aws_db_subnet_group" "trino_on_eks" {
-  name       = local.name
+  name       = var.name
   subnet_ids = module.vpc.public_subnets
 
   tags = local.tags
@@ -189,7 +181,7 @@ resource "aws_security_group" "trino_on_eks_rds" {
     from_port   = 5432
     to_port     = 5432
     protocol    = "tcp"
-    cidr_blocks = concat([local.vpc_cidr], var.cluster_endpoint_public_access_cidrs)
+    cidr_blocks = concat([var.vpc_cidr], var.cluster_endpoint_public_access_cidrs)
   }
 
   egress {
@@ -203,7 +195,7 @@ resource "aws_security_group" "trino_on_eks_rds" {
 }
 
 resource "aws_db_parameter_group" "trino_on_eks_rds" {
-  name   = local.name
+  name   = var.name
   family = "postgres16"
 
   parameter {
@@ -215,7 +207,7 @@ resource "aws_db_parameter_group" "trino_on_eks_rds" {
 resource "aws_db_instance" "trino_on_eks_rds" {
   count = var.enable_rds ? 1 : 0
 
-  identifier             = local.name
+  identifier             = var.name
   instance_class         = "db.t4g.micro"
   allocated_storage      = 10
   engine                 = "postgres"
