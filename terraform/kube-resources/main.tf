@@ -1,9 +1,3 @@
-locals {
-  tags = {
-    role = var.name
-  }
-}
-
 data "aws_eks_cluster" "trino_on_eks" {
   name = var.name
 }
